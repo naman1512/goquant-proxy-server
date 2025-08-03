@@ -2,8 +2,49 @@ const WebSocket = require('ws');
 const http = require('http');
 const url = require('url');
 
-const server = http.createServer();
-const wss = new WebSocket.Server({ server });
+const server = http.createServer((req, res) => {
+  // Health check endpoint for Render
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      status: 'healthy', 
+      uptime: process.uptime(),
+      activeConnections: activeConnections.size,
+      timestamp: new Date().toISOString()
+    }));
+    return;
+  }
+  
+  // CORS headers for production
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+  
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('GoQuant WebSocket Proxy Server - Use WebSocket connections on /okx, /bybit, or /deribit');
+});
+
+const wss = new WebSocket.Server({ 
+  server,
+  verifyClient: (info) => {
+    // Basic verification - you can add more security here
+    const origin = info.origin;
+    const pathname = info.req.url;
+    
+    // Allow all origins in development, restrict in production if needed
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`WebSocket connection attempt from origin: ${origin}, path: ${pathname}`);
+    }
+    
+    return true; // Allow all connections for now
+  }
+});
 
 const EXCHANGE_URLS = {
   okx: 'wss://ws.okx.com:8443/ws/v5/public',
@@ -18,11 +59,12 @@ console.log('Proxy server starting...');
 wss.on('connection', (clientWS, request) => {
   const pathname = url.parse(request.url).pathname;
   const exchange = pathname.substring(1);
+  const clientIP = request.headers['x-forwarded-for'] || request.connection.remoteAddress;
 
-  console.log(`Client connected: ${exchange}`);
+  console.log(`Client connected: ${exchange} from ${clientIP}`);
 
   if (!EXCHANGE_URLS[exchange]) {
-    console.error(`Unsupported exchange: ${exchange}`);
+    console.error(`Unsupported exchange: ${exchange} from ${clientIP}`);
     clientWS.close(1000, 'Unsupported exchange');
     return;
   }
@@ -164,14 +206,21 @@ wss.on('connection', (clientWS, request) => {
   });
 });
 
-const PORT = 8080;
-server.listen(PORT, () => {
-  console.log(`WebSocket Proxy Server running on ws://localhost:${PORT}`);
+const PORT = process.env.PORT || 8080;
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+
+server.listen(PORT, HOST, () => {
+  const serverUrl = process.env.NODE_ENV === 'production' 
+    ? `wss://${process.env.RENDER_EXTERNAL_HOSTNAME || 'your-app-name.onrender.com'}` 
+    : `ws://localhost:${PORT}`;
+    
+  console.log(`WebSocket Proxy Server running on ${serverUrl}`);
   console.log(`Available endpoints:`);
-  console.log(`   • ws://localhost:${PORT}/okx`);
-  console.log(`   • ws://localhost:${PORT}/bybit`);
-  console.log(`   • ws://localhost:${PORT}/deribit`);
+  console.log(`   • ${serverUrl}/okx`);
+  console.log(`   • ${serverUrl}/bybit`);
+  console.log(`   • ${serverUrl}/deribit`);
   console.log(`Ready to proxy exchange connections`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 setInterval(() => {

@@ -1,98 +1,105 @@
-# 🚀 Proxy Server Repository Setup Complete!
-
-## ✅ What's Been Created
-
-I've created a complete, independent repository for your proxy server at:
-
-```
-e:\WEB DEVELOPMENT\Go-Quant-Assesment\goquant-proxy-server\
-```
-
-### Files Created:
-
-- ✅ `index.js` - Your cleaned proxy server code
-- ✅ `package.json` - Node.js dependencies and scripts
-- ✅ `README.md` - Documentation for the proxy server
-- ✅ `.gitignore` - Proper ignores for Node.js project
-- ✅ Git repository initialized and committed
-
-## 🎯 Next Steps: Push to GitHub
-
-### 1. Create GitHub Repository
-
-1. Go to [github.com](https://github.com)
-2. Click "New" repository
-3. Name it: `goquant-proxy-server`
-4. Set it to **Public** (for easy deployment)
-5. **Don't** initialize with README (we already have one)
-6. Click "Create repository"
-
-### 2. Push Your Code
-
-Copy your GitHub repository URL, then run:
-
-```bash
-cd "e:\WEB DEVELOPMENT\Go-Quant-Assesment\goquant-proxy-server"
-
-# Replace YOUR_USERNAME with your actual GitHub username
-git remote add origin https://github.com/YOUR_USERNAME/goquant-proxy-server.git
-
-# Push to GitHub
-git push -u origin main
-```
+# 🚀 GoQuant Proxy Server - Render Deployment Guide
 
 ## 🌐 Deploy to Render
 
-### Option 1: Direct from GitHub (Recommended)
+### Step 1: Push to GitHub (Already Done!)
+Your code is already on GitHub at: https://github.com/naman1512/goquant-proxy-server
 
-1. Go to [render.com](https://render.com)
-2. Click "New +" → "Web Service"
-3. Connect your GitHub repository `goquant-proxy-server`
-4. Configure:
-   - **Name**: `goquant-proxy-server`
-   - **Environment**: `Node`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-5. Deploy!
+### Step 2: Deploy on Render
 
-### Option 2: Manual Upload
+1. **Go to [render.com](https://render.com) and sign in**
 
-If you prefer not to use GitHub:
+2. **Click "New +" → "Web Service"**
 
-1. Create a ZIP file of the `goquant-proxy-server` folder
-2. Upload directly to Render
+3. **Connect GitHub Repository**:
+   - Select `goquant-proxy-server` repository
+   - Click "Connect"
 
-## 🔗 After Deployment
+4. **Configure Service**:
+   ```
+   Name: goquant-proxy-server
+   Environment: Node
+   Region: Choose closest to your users
+   Branch: main
+   
+   Build Command: npm install
+   Start Command: npm start
+   ```
 
-Once deployed, you'll get a URL like:
+5. **Environment Variables** (Optional):
+   ```
+   NODE_ENV=production
+   ```
 
+6. **Click "Deploy Web Service"**
+
+### Step 3: Get Your Deployment URL
+
+After deployment, you'll get a URL like:
 ```
-https://goquant-proxy-server.onrender.com
-```
-
-### Update Your Frontend Environment Variable:
-
-```env
-# In your main project's .env.local
-NEXT_PUBLIC_PROXY_URL=https://goquant-proxy-server.onrender.com
-```
-
-## 📊 Repository Structure
-
-```
-goquant-proxy-server/
-├── index.js          # Main proxy server code
-├── package.json      # Dependencies and scripts
-├── README.md         # Documentation
-├── .gitignore       # Git ignores
-└── .git/            # Git repository
+https://goquant-proxy-server-xyz.onrender.com
 ```
 
-## 🎉 Benefits of Separate Repository
+## 🔗 Update Your Frontend
 
-✅ **Clean Deployment** - Only proxy server code, no frontend files
-✅ **Independent Versioning** - Proxy and frontend can be updated separately  
-✅ **Platform Compatibility** - Works with Render, Railway, Heroku, etc.
-✅ **Professional Structure** - Industry standard for microservices
+In your main project, update the WebSocket URL:
 
-Your proxy server is now ready for professional deployment! 🚀
+```javascript
+// Replace localhost with your Render URL
+const PROXY_URL = 'wss://goquant-proxy-server-xyz.onrender.com';
+
+// Connect to exchanges via your proxy
+const okxSocket = new WebSocket(`${PROXY_URL}/okx`);
+const bybitSocket = new WebSocket(`${PROXY_URL}/bybit`);
+const deribitSocket = new WebSocket(`${PROXY_URL}/deribit`);
+```
+
+## ✅ Production Features Added
+
+✅ **Health Check Endpoint**: `/health` for monitoring
+✅ **Environment-aware Port Binding**: Uses `process.env.PORT`
+✅ **CORS Headers**: Allows frontend connections
+✅ **Production Logging**: Better error tracking
+✅ **Client IP Logging**: For debugging
+✅ **Graceful Shutdown**: Proper cleanup on exit
+
+## 🎯 Testing Your Deployment
+
+Once deployed, test the health endpoint:
+```
+https://your-app.onrender.com/health
+```
+
+Should return:
+```json
+{
+  "status": "healthy",
+  "uptime": 123.45,
+  "activeConnections": 0,
+  "timestamp": "2025-08-03T10:30:00.000Z"
+}
+```
+
+## 🔧 Troubleshooting
+
+### Common Issues:
+
+1. **WebSocket connection fails**:
+   - Ensure you're using `wss://` (not `ws://`) for production
+   - Check your frontend CORS settings
+
+2. **Build fails**:
+   - Verify `package.json` has correct dependencies
+   - Check Node.js version (using 18.x)
+
+3. **Server won't start**:
+   - Check Render logs for error messages
+   - Verify port binding is correct
+
+## 📊 Monitoring
+
+- **Render Dashboard**: View logs, metrics, and deployments
+- **Health Endpoint**: Monitor server status
+- **Console Logs**: Active connection count every 60 seconds
+
+Your proxy server is production-ready! 🚀
