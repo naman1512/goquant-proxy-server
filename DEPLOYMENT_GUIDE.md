@@ -3,6 +3,7 @@
 ## 🌐 Deploy to Render
 
 ### Step 1: Push to GitHub (Already Done!)
+
 Your code is already on GitHub at: https://github.com/naman1512/goquant-proxy-server
 
 ### Step 2: Deploy on Render
@@ -12,21 +13,24 @@ Your code is already on GitHub at: https://github.com/naman1512/goquant-proxy-se
 2. **Click "New +" → "Web Service"**
 
 3. **Connect GitHub Repository**:
+
    - Select `goquant-proxy-server` repository
    - Click "Connect"
 
 4. **Configure Service**:
+
    ```
    Name: goquant-proxy-server
    Environment: Node
    Region: Choose closest to your users
    Branch: main
-   
+
    Build Command: npm install
    Start Command: npm start
    ```
 
 5. **Environment Variables** (Optional):
+
    ```
    NODE_ENV=production
    ```
@@ -36,6 +40,7 @@ Your code is already on GitHub at: https://github.com/naman1512/goquant-proxy-se
 ### Step 3: Get Your Deployment URL
 
 After deployment, you'll get a URL like:
+
 ```
 https://goquant-proxy-server-xyz.onrender.com
 ```
@@ -46,7 +51,7 @@ In your main project, update the WebSocket URL:
 
 ```javascript
 // Replace localhost with your Render URL
-const PROXY_URL = 'wss://goquant-proxy-server-xyz.onrender.com';
+const PROXY_URL = "wss://goquant-proxy-server-xyz.onrender.com";
 
 // Connect to exchanges via your proxy
 const okxSocket = new WebSocket(`${PROXY_URL}/okx`);
@@ -66,11 +71,13 @@ const deribitSocket = new WebSocket(`${PROXY_URL}/deribit`);
 ## 🎯 Testing Your Deployment
 
 Once deployed, test the health endpoint:
+
 ```
 https://your-app.onrender.com/health
 ```
 
 Should return:
+
 ```json
 {
   "status": "healthy",
@@ -85,10 +92,12 @@ Should return:
 ### Common Issues:
 
 1. **WebSocket connection fails**:
+
    - Ensure you're using `wss://` (not `ws://`) for production
    - Check your frontend CORS settings
 
 2. **Build fails**:
+
    - Verify `package.json` has correct dependencies
    - Check Node.js version (using 18.x)
 

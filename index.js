@@ -207,20 +207,23 @@ wss.on('connection', (clientWS, request) => {
 });
 
 const PORT = process.env.PORT || 8080;
-const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+const HOST = '0.0.0.0'; // Always bind to all interfaces for cloud deployment
 
 server.listen(PORT, HOST, () => {
-  const serverUrl = process.env.NODE_ENV === 'production' 
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.PORT;
+  const serverUrl = isProduction 
     ? `wss://${process.env.RENDER_EXTERNAL_HOSTNAME || 'your-app-name.onrender.com'}` 
     : `ws://localhost:${PORT}`;
     
-  console.log(`WebSocket Proxy Server running on ${serverUrl}`);
+  console.log(`WebSocket Proxy Server running on ${HOST}:${PORT}`);
+  console.log(`Public URL: ${serverUrl}`);
   console.log(`Available endpoints:`);
   console.log(`   • ${serverUrl}/okx`);
   console.log(`   • ${serverUrl}/bybit`);
   console.log(`   • ${serverUrl}/deribit`);
   console.log(`Ready to proxy exchange connections`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Host binding: ${HOST}, Port: ${PORT}`);
 });
 
 setInterval(() => {
