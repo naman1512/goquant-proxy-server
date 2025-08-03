@@ -52,6 +52,29 @@ const EXCHANGE_URLS = {
   deribit: 'wss://www.deribit.com/ws/api/v2'
 };
 
+// Default subscriptions for each exchange
+const DEFAULT_SUBSCRIPTIONS = {
+  okx: {
+    op: 'subscribe',
+    args: [{
+      channel: 'books',
+      instId: 'BTC-USDT'
+    }]
+  },
+  bybit: {
+    op: 'subscribe',
+    args: ['orderbook.1.BTCUSDT']
+  },
+  deribit: {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'public/subscribe',
+    params: {
+      channels: ['book.BTC-PERPETUAL.100ms']
+    }
+  }
+};
+
 const activeConnections = new Map();
 
 console.log('Proxy server starting...');
@@ -85,6 +108,7 @@ wss.on('connection', (clientWS, request) => {
   exchangeWS.on('open', () => {
     console.log(`Connected to ${exchange}`);
 
+    // Set up ping for OKX
     if (exchange === 'okx') {
       pingInterval = setInterval(() => {
         if (exchangeWS.readyState === WebSocket.OPEN) {
@@ -93,23 +117,58 @@ wss.on('connection', (clientWS, request) => {
       }, 25000);
     }
 
+    // Send connection confirmation to client
     clientWS.send(JSON.stringify({ type: 'connected', exchange }));
+
+    // Auto-subscribe to default orderbook data
+    const defaultSub = DEFAULT_SUBSCRIPTIONS[exchange];
+    if (defaultSub && exchangeWS.readyState === WebSocket.OPEN) {
+      console.log(`Auto-subscribing to ${exchange} orderbook:`, defaultSub);
+      exchangeWS.send(JSON.stringify(defaultSub));
+    }
   });
 
   exchangeWS.on('message', (data) => {
     try {
       const message = data.toString();
+      console.log(`${exchange} → client: ${message.substring(0, 200)}${message.length > 200 ? '...' : ''}`);
 
+      // Forward all messages to client
       if (clientWS.readyState === WebSocket.OPEN) {
         clientWS.send(message);
       }
 
+      // Track if we're getting orderbook data
       if (!subscribed && exchange === 'okx') {
         try {
           const parsed = JSON.parse(message);
           if (parsed.data && parsed.data.length > 0) {
             subscribed = true;
-            console.log(`${exchange} data flowing`);
+            console.log(`${exchange} orderbook data confirmed flowing`);
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+
+      if (!subscribed && exchange === 'bybit') {
+        try {
+          const parsed = JSON.parse(message);
+          if (parsed.data && (parsed.data.b || parsed.data.a)) {
+            subscribed = true;
+            console.log(`${exchange} orderbook data confirmed flowing`);
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+
+      if (!subscribed && exchange === 'deribit') {
+        try {
+          const parsed = JSON.parse(message);
+          if (parsed.params && parsed.params.data && (parsed.params.data.bids || parsed.params.data.asks)) {
+            subscribed = true;
+            console.log(`${exchange} orderbook data confirmed flowing`);
           }
         } catch (e) {
           // Ignore parsing errors
@@ -132,7 +191,7 @@ wss.on('connection', (clientWS, request) => {
   });
 
   exchangeWS.on('close', (code, reason) => {
-    console.log(`${exchange} WebSocket closed: ${code}`);
+    console.log(`${exchange} WebSocket closed: ${code} ${reason}`);
 
     if (pingInterval) {
       clearInterval(pingInterval);
@@ -158,17 +217,22 @@ wss.on('connection', (clientWS, request) => {
 
   clientWS.on('message', (data) => {
     try {
+      const messageStr = data.toString();
+      console.log(`Client → ${exchange}: ${messageStr}`);
+
       if (exchangeWS.readyState === WebSocket.OPEN) {
         exchangeWS.send(data);
 
         try {
-          const parsed = JSON.parse(data.toString());
-          if (parsed.op === 'subscribe') {
-            console.log(`Subscription sent to ${exchange}:`, parsed.args);
+          const parsed = JSON.parse(messageStr);
+          if (parsed.op === 'subscribe' || parsed.method === 'public/subscribe') {
+            console.log(`Custom subscription sent to ${exchange}:`, parsed);
           }
         } catch (e) {
           // Ignore parsing errors
         }
+      } else {
+        console.warn(`Cannot send to ${exchange} - connection not open`);
       }
     } catch (error) {
       console.warn(`Message forward failed to ${exchange}:`, error.message);
@@ -212,7 +276,7 @@ const HOST = '0.0.0.0'; // Always bind to all interfaces for cloud deployment
 server.listen(PORT, HOST, () => {
   const isProduction = process.env.NODE_ENV === 'production' || process.env.PORT;
   const serverUrl = isProduction 
-    ? `wss://${process.env.RENDER_EXTERNAL_HOSTNAME || 'your-app-name.onrender.com'}` 
+    ? `wss://${process.env.RENDER_EXTERNAL_HOSTNAME || 'goquant-proxy-server.onrender.com'}` 
     : `ws://localhost:${PORT}`;
     
   console.log(`WebSocket Proxy Server running on ${HOST}:${PORT}`);
